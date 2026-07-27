@@ -7,4 +7,4 @@ jobs:                         # a workflow has one or more jobs
     steps:                    # an ordered list of steps
       - uses: actions/checkout@v7      # a step that runs an ACTION (checks out your repo)
       - name: Say hello                # a step that runs a SHELL COMMAND
-        run: echo "Hello from GitHub Actions!"
+        run: ls -la
