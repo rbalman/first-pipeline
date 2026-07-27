@@ -2,10 +2,20 @@ name: Hello                   # label shown in the Actions tab
 on:
   workflow_dispatch:
 
-jobs:                         # a workflow has one or more jobs
-  greet:                      # "greet" is a job id you choose
-    runs-on: ubuntu-latest    # the runner (VM) the job executes on
-    steps:                    # an ordered list of steps
-      - uses: actions/checkout@v7      # a step that runs an ACTION (checks out your repo)
-      - name: list files                # a step that runs a SHELL COMMAND
-        run: ls -la
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "linting…"
+
+  test:
+    needs: lint            # runs only after lint succeeds
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "testing…"
+
+  deploy:
+    needs: [lint, test]    # waits for BOTH to succeed
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "deploying…"
