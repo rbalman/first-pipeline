@@ -1,10 +1,11 @@
 name: Hello                   # label shown in the Actions tab
-on: [push]                    # the event that triggers this workflow
+on:
+  workflow_dispatch:
 
 jobs:                         # a workflow has one or more jobs
   greet:                      # "greet" is a job id you choose
     runs-on: ubuntu-latest    # the runner (VM) the job executes on
     steps:                    # an ordered list of steps
       - uses: actions/checkout@v7      # a step that runs an ACTION (checks out your repo)
-      - name: Say hello                # a step that runs a SHELL COMMAND
+      - name: list files                # a step that runs a SHELL COMMAND
         run: ls -la
