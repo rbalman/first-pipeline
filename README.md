@@ -1,63 +1,59 @@
-# Sample CI/CD App
+# Terraform in CI/CD — Sample Project
 
-A complete, runnable version of the sample app used in **Week 4, Day 1** to build a
-first CI pipeline. It's a tiny **Node.js / Express API** with one test and a lint
-config — the smallest thing with something real to *lint, test, and build* — plus
-the **GitHub Actions workflow** that does exactly that on every push and pull request.
+A complete, runnable version of the project used in **Week 4, Day 3** to run Terraform
+from a GitHub Actions pipeline: `plan` on pull requests, `apply` on merge to `main`,
+authenticated to AWS with **OIDC** (no stored keys). The infrastructure is intentionally
+trivial — a single EC2 instance — so the focus is the **automation**, not the resource.
 
-> The API is deliberately minimal. The point of Day 1 isn't the app — it's the
-> **pipeline**. Use this as the reference app so you can focus on the workflow.
+> This is its **own repo/project** — it does not reuse the `sample-app` from Day 1.
 
 ## Structure
 
 ```
-first-pipeline/
+terraform-ci/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml          # the CI pipeline: install → lint → test → build
-└── api/
-    ├── app.js              # the Express app (exported so tests can import it)
-    ├── server.js           # starts the app (kept separate so tests don't open a port)
-    ├── app.test.js         # one test — hits GET /healthz
-    ├── eslint.config.js    # minimal ESLint flat config
-    ├── package.json        # scripts: start / test / lint
-    └── package-lock.json   # exact dependency versions (required by `npm ci`)
+│       └── terraform.yml    # fmt → validate → plan (PR) → apply (merge)
+└── terraform/
+    ├── main.tf              # one EC2 instance (t3.micro) + the S3 remote backend
+    └── .terraform.lock.hcl  # provider version lock — committed, on purpose
 ```
 
-> **Verified on Ubuntu 24.04 + Node 24** (the course target). `node_modules/` is
-> git-ignored — run `npm ci` to install from the lockfile.
+> **The lock file (`.terraform.lock.hcl`) is committed, not ignored.** It pins the exact
+> provider versions and hashes so every run — yours and the CI runner's — resolves the
+> same AWS provider. Only `.terraform/` (downloaded binaries) and `*.tfstate` are ignored.
 
-## Run it locally
+## Before it will run
 
-On an Ubuntu 24.04 machine (your Vagrant box or EC2), install Node 24, then:
+1. **State bucket** — reuse the S3 backend bucket from Week 3, Day 21. Put its name in
+   `terraform/main.tf` (`backend "s3" { bucket = ... }`), replacing `CHANGEME`.
+2. **OIDC role** — create an IAM OIDC identity provider for
+   `token.actions.githubusercontent.com` and a role whose trust policy allows this repo
+   (`repo:<you>/terraform-ci:*`) and whose permissions allow **EC2** (+ the state bucket).
+   Put its ARN in `terraform.yml` (`role-to-assume:`), replacing `CHANGEME`.
+
+## Check it locally
+
+You can validate the config offline (no AWS needed):
 
 ```bash
-cd api
-npm ci                # install exactly what's in package-lock.json
-npm run lint          # eslint .
-npm test              # jest — the /healthz test
-npm start             # runs on http://localhost:3000
+cd terraform
+terraform fmt -check
+terraform init -backend=false
+terraform validate      # → Success! The configuration is valid.
 ```
 
-```bash
-curl localhost:3000/healthz     # {"status":"ok"}
-```
-
-If you don't have Node yet:
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
+> Verified with Terraform ≥ 1.10 and the AWS provider `~> 6.0`.
 
 ## The pipeline
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push, pull
-request, and manual dispatch. It checks out the code, sets up Node 24 (with npm
-caching), then runs **install → lint → test → build** — each a gate that stops the
-pipeline if it fails. To use it in your own repo, copy this whole folder to the repo
-root; GitHub reads workflows from `.github/workflows/` at the **repo root** (not from
-inside `examples/`), so the reference copy here doesn't run in this repo — it's yours
-to copy.
+Copy this folder to a new repo's root; GitHub reads workflows from `.github/workflows/`
+at the **repo root** (not from inside `examples/`), so the copy here is a reference.
+Open a PR → the workflow runs `fmt`/`validate`/`plan`; merge to `main` → it `apply`s the
+EC2 instance.
 
-See [Week 4, Day 1](../../../docs/week-04/day-22.md) for the full walkthrough.
+!!! note
+    An EC2 instance bills by the hour (a `t3.micro` is free-tier-eligible) — run
+    `terraform destroy` when you're done.
+
+See [Week 4, Day 3](../../../docs/week-04/day-24.md) for the full walkthrough.
